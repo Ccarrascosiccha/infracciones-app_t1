@@ -1,3 +1,4 @@
+@"
 name: Java CI - Run Tests
 
 on:
@@ -12,7 +13,6 @@ jobs:
   test:
     name: Run Maven Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,7 +24,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      run: mvn test --no-transfer-progress -Dtest="!InfraccionesApplicationTests" -DfailIfNoTests=false
+      - name: Run tests with Maven
+        run: mvn test --no-transfer-progress -Dtest="!InfraccionesApplicationTests" -DfailIfNoTests=false
 
       - name: Upload test results (optional)
         if: always()
@@ -32,3 +33,4 @@ jobs:
         with:
           name: test-results
           path: target/surefire-reports/
+"@ | Out-File -FilePath ".github/workflows/tests.yml" -Encoding utf8

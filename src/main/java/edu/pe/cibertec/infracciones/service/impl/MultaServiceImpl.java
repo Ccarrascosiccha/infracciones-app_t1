@@ -94,6 +94,31 @@ public class MultaServiceImpl implements IMultaService {
                 .map(this::mapToResponse)
                 .toList();
     }
+    // Pregunta 3
+    @Override
+    public void transferirMulta(Long multaId, Long nuevoInfractorId) {
+        Multa multa = multaRepository.findById(multaId)
+                .orElseThrow(() -> new MultaNotFoundException(multaId));
+
+        if (multa.getEstado() != EstadoMulta.PENDIENTE)
+            throw new IllegalStateException("Solo se transfieren multas PENDIENTES");
+
+        Infractor nuevoInfractor = infractorRepository.findById(nuevoInfractorId)
+                .orElseThrow(() -> new InfractorNotFoundException(nuevoInfractorId));
+
+        if (nuevoInfractor.isBloqueado())
+            throw new InfractorBloqueadoException(nuevoInfractorId);
+
+        boolean tieneVehiculo = nuevoInfractor.getVehiculos().stream()
+                .anyMatch(v -> v.getId().equals(multa.getVehiculo().getId()));
+
+        if (!tieneVehiculo)
+            throw new IllegalStateException(
+                    "El vehículo no pertenece al nuevo infractor");
+
+        multa.setInfractor(nuevoInfractor);
+        multaRepository.save(multa);
+    }
 
     private MultaResponseDTO mapToResponse(Multa multa) {
         MultaResponseDTO dto = new MultaResponseDTO();

@@ -4,9 +4,12 @@ import edu.pe.cibertec.infracciones.dto.InfractorRequestDTO;
 import edu.pe.cibertec.infracciones.dto.InfractorResponseDTO;
 import edu.pe.cibertec.infracciones.exception.InfractorNotFoundException;
 import edu.pe.cibertec.infracciones.exception.VehiculoNotFoundException;
+import edu.pe.cibertec.infracciones.model.EstadoMulta;
 import edu.pe.cibertec.infracciones.model.Infractor;
+import edu.pe.cibertec.infracciones.model.Multa;
 import edu.pe.cibertec.infracciones.model.Vehiculo;
 import edu.pe.cibertec.infracciones.repository.InfractorRepository;
+import edu.pe.cibertec.infracciones.repository.MultaRepository;
 import edu.pe.cibertec.infracciones.repository.VehiculoRepository;
 import edu.pe.cibertec.infracciones.service.IInfractorService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ public class InfractorServiceImpl implements IInfractorService {
 
     private final InfractorRepository infractorRepository;
     private final VehiculoRepository vehiculoRepository;
+    private final MultaRepository multaRepository;
 
     @Override
     public InfractorResponseDTO registrarInfractor(InfractorRequestDTO dto) {
@@ -53,6 +57,43 @@ public class InfractorServiceImpl implements IInfractorService {
         Vehiculo vehiculo = vehiculoRepository.findById(vehiculoId)
                 .orElseThrow(() -> new VehiculoNotFoundException(vehiculoId));
         infractor.getVehiculos().add(vehiculo);
+        infractorRepository.save(infractor);
+    }
+
+    // Pregunta 1
+    @Override
+    public double calcularDeuda(Long infractorId) {
+        double pendientes = multaRepository
+                .findByInfractor_IdAndEstado(infractorId, EstadoMulta.PENDIENTE)
+                .stream()
+                .mapToDouble(Multa::getMonto)
+                .sum();
+
+        double vencidas = multaRepository
+                .findByInfractor_IdAndEstado(infractorId, EstadoMulta.VENCIDA)
+                .stream()
+                .mapToDouble(m -> m.getMonto() * 1.15)
+                .sum();
+
+        return pendientes + vencidas;
+    }
+
+    //Pregunta 2
+    @Override
+    public void desasignarVehiculo(Long infractorId, Long vehiculoId) {
+        boolean tienePendientes = multaRepository
+                .existsByInfractor_IdAndVehiculo_IdAndEstado(
+                        infractorId, vehiculoId, EstadoMulta.PENDIENTE);
+
+        if (tienePendientes) {
+            throw new IllegalStateException(
+                    "El vehículo tiene multas PENDIENTES activas");
+        }
+
+        Infractor infractor = infractorRepository.findById(infractorId)
+                .orElseThrow(() -> new InfractorNotFoundException(infractorId));
+
+        infractor.getVehiculos().removeIf(v -> v.getId().equals(vehiculoId));
         infractorRepository.save(infractor);
     }
 
